@@ -44,6 +44,11 @@ IDs and number of all threads.
 
 ## OpenMP Basics
 
+Goals:
+    1. Make parallelizing existing code easy
+    1. Programs should have serial interpretation (if you ignore pragmas it works fine)
+    1. It's about parallelism, not concurrency, concurrent constructs without serial interpretation are poorely supported (eg. through flushes)
+
 Things to be executed in parallel (or just any code that uses omp pragmas should be in these blocks:
 ```c++
 #pragma openmp parallel
@@ -78,7 +83,7 @@ for (int i = ID; i < n; i += NTHREADS) ...
     * Barrier `#pragma omp barrier`
 * Mutual exclusion (low-level)
     * flush
-    * locks
+    * locks: `omp_init_lock()`, `omp_destroy_lock()`, `omp_set_lock()`,  `omp_unset_lock()`
         * simple
         * nested
 
@@ -91,6 +96,7 @@ for (int i = ID; i < n; i += NTHREADS) ...
         // code without loop-carry dependencies
     }
     ```
+    Loop's index will have private access by default (even in C-like style where you define `int i` before the loop). **Watch out for C-style inner loops defining their indices before parallel for - they're shared by default, very error prone** (inner `for (int j=...` is OK).
     
     * Scheduling
     
@@ -133,7 +139,46 @@ for (int i = ID; i < n; i += NTHREADS) ...
     ```
 * single  `single` - any thread (but only one) will execute this section
 * master `master` - like single, but done by the thread with `id` = 0
-* task
+* task `task`, `taskwait`: an independent unit of work, high-level, query of unfinished tasks, dynamic scheduling
+    Consists of
+        * code to execute
+        * data env (?)
+        * internal control variables: **OpenMP ties internal state (things you access with omp_get...) to tasks, not threads!** (?), ICV - internal control variable
+        
+    **WARNING: tricky access patterns**
+    
+    ```c++
+    node* p = head;
+    while (p) {
+        #pragma openmp task
+        expensive_computation(p);
+        p = p->next;
+    }
+    ```
+    
+     ```c++
+    long fib(int n) {
+        if (n < 2) return n;
+        long x, y;
+        #pragma omp task shared(x) // (!) without this, x would be private to the task
+        x = fib(n-1);
+        #pragma omp task shared(y) 
+        y = fib(n-2);
+        
+        #pragma omp taskwait // important here, but not in thre previous example
+        return x + y;
+    }
+    ```
+    
+    ```c++
+    #pragma omp parallel single
+    {
+        for (int i = 0; i < n; i++) {
+            #pragma omp task firstprivate(i) // (!) without it, i would be shared
+            process(i);
+        }
+    }
+    ```
 
 ## Implicit barriers
 * after each worksharing loop (can be disabled with `nowait` directive, as in `#pragma omp for nowait`)
@@ -146,9 +191,56 @@ for (int i = ID; i < n; i += NTHREADS) ...
 * During a parallel execution, let the threads have their separate results and combine these after joining (no sunchronization)
 * **Always ask how many threads you actually got**, don't assume that your wish was fulfilled.
 * Padding for avoiding unwanted cache-line sharing: `int results[n][16]` (assuming 64 bytes for cache line), access with `results[i][0]`
+* if you really want some fixed number of threads
+    ```c++
+    int nthreads;
+    omp_set_dynamic(0);
+    omp_set_num_threads(omp_num_procs()); // or any other fixed number
+    #pragma omp parallel
+    {
+        #pragma omp single
+        nthreads = omp_get_num_threads();
+        
+        if (not_ok(nthreads)) exit();
+        else compute(omp_get_thread_num());
+    }
+    ```
+* **Learn some parallel debugger!**
+* "Computating is free and you pay for data movement"
+
+## Global/local data
+
+The most important rule:
+    * stack is for private data
+    * heap stores global data
+
+* `shared(x,y)`: there variables are global
+* `private(x,y)`: there variables are local to a thread, have no initial value, disappear with their thread
+* `firstprivate(x,y)`: private, but copy their initial value from the globlal var of the same name
+* `lastprivate(x,y)`: private but store their last value ((?), like from where i=n-1 in a parallel loop) in the global var of the same name
+* `default( firstprivate | shared | none )`: which access applies to the variables I didn't mention with the above methods?
+    * I didn't specify a default: `default(shared)`
+    * `none`: **extremely useful, it gives you warning for every variable, great for debugging** (doesn't work in VisualStudio)
+    * `default(private)` cannot be done in C (Fortran's version of OpenMP supports it)
+
+**threadprivate**: (?!)
 
 ## OpenMP functions
 | Name | Functions | Notes |
 |--|--|--|
 | omp_get_thread_num() | thread's id | \in **0..n-1**, where 0 - master |
 | omp_get_num_threads() | number of threads currently running | outside of a parallel region it's **always 1** |
+| omp_get_max_threads() | max possible threads | |
+| omp_in_parallel() | am I in a parallel section right now? | |
+| omp_get_dynamic() | dynamic mode? (yes => two parallel regions might get different number of threads) | |
+| omp_set_dynamic() | | 0, 1 |
+| omp_num_procs() | how many processors? | |
+
+
+## OpenMP env variables
+| Name | Domain | Functions |
+|--|--|--|
+| OMP_NUM_THREADS | Int| |
+| OMP_STACKSIZE | | |
+|OMP_WAIT_POLICY | ACTIVE\|PASSIVE | busy waiting or yielding? |
+|OMP_PROC_BIND | TRUE\|FALSE | FALSE => threads can migrate away from the processor they started in |
