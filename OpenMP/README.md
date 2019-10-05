@@ -37,6 +37,8 @@ Requirement for both: shared address space.
 
 **False sharing**: (?)
 
+**leapfrog RNG**: (?), and also correct use of rngs in concurrent applications
+
 **Loop-carry dependency**: iterations of a loop depend on previous iteration instead of depending only on the loop index.
 
 **SIMP/SPMD**: (single instruction/program, multiple data). All threads execute the same code but parametrized with their
@@ -80,9 +82,27 @@ for (int i = ID; i < n; i += NTHREADS) ...
     * Atomic `#pragma omp atomic`
         * If hardware can do these operation atomically, it will, else compile to a critical section.
         * `x *= expr` (where `*` is any binop), `++x`, `--x`, `x++`, `x--` are supported
-    * Barrier `#pragma omp barrier`
+        
+        Optionally you can specity `atomic write`, `atomic read`, `atomic update`, `atomic capture` (? capture?) like
+            ```c++
+            #pragma omp atomic read
+            my_copy = some_var;
+            ```
+    * Barrier `#pragma omp barrier` (no block of code needed)
 * Mutual exclusion (low-level)
-    * flush
+    * flush `#pragma omp flush` or `#pragma omp flush(x)` (no block of code needed)
+        
+        Makes your (thread's) view available to all the other threads (flushed RAM, registers, cache lines). **This is not a mechanism of global synchronization, only your view of your variables is make global, it doesn't force others' views to become global**.
+        
+        **Do not touch this. This is low-level (OpenMP is for parallel not concurrent)**
+        
+        **(?) flush sets** - some formalism associated with it
+        
+        Implicit flush (total):
+            * enter/exit from a parallel region
+            * enter/exit from a critical section
+            * lock set/unset
+            * on any barrier (when exactly?)
     * locks: `omp_init_lock()`, `omp_destroy_lock()`, `omp_set_lock()`,  `omp_unset_lock()`
         * simple
         * nested
@@ -222,6 +242,31 @@ The most important rule:
     * I didn't specify a default: `default(shared)`
     * `none`: **extremely useful, it gives you warning for every variable, great for debugging** (doesn't work in VisualStudio)
     * `default(private)` cannot be done in C (Fortran's version of OpenMP supports it)
+* If you really need to do concurrent programming, remember about the flushes:
+    ```c++
+    #pragma omp parallel sections
+    {
+        #pragma omp section
+        {
+            fill_array(A);
+            #pragma omp flush
+            #pragma omp atomic write
+                flag = 1;
+            #pragma omp flush(flag)
+        }
+        #pragma omp section
+        {
+            while (1) {
+                #pragma omp flush(flag)
+                #pragma omp atomic read
+                    _flag = flag;
+                if (_flag) break;
+            }
+            #pragma omp flush
+            process_array(A);
+        }
+    }
+    ```
 
 **threadprivate**: (?!)
 
