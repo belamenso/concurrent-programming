@@ -17,13 +17,16 @@ It's hard not to have OpenMP in your compiler already. MS support is stalling fo
     ./a.out
     ```
 2. Visual Studio
-  
-    ...
+        ![](../../../blob/master/OpenMP/imgs/vs2.PNG?raw=true)
+        ![](../../../blob/master/OpenMP/imgs/vs3.PNG?raw=true)
 
 
 **Computation model**: multithreadind + shared-memory. Program in memory consists of stack, text, data and heap. Out of these 4 things,
 threads only have their own stacks, the rest is shared for the purposes of fast contxt-switching. Communication happens through
 shared variables.
+
+![](../../../blob/master/OpenMP/imgs/openmp-model.PNG?raw=true)
+![](../../../blob/master/OpenMP/imgs/fork-join-model.png?raw=true)
 
 **Race condition**: results of execution change depensing on the specific interleaving.
 
@@ -50,7 +53,8 @@ Variables declared inside of the prarallel region are local to the thread, outsi
 (under thre hood sections are compiled to functions and then pthreads).
 
 Parallel hello world
-...
+
+![](../../../blob/master/OpenMP/imgs/pi.png?raw=true)
 
 **Round-robin allocation**:
 ```c++
