@@ -275,6 +275,7 @@ The most important rule:
 |--|--|--|
 | omp_get_thread_num() | thread's id | \in **0..n-1**, where 0 - master |
 | omp_get_num_threads() | number of threads currently running | outside of a parallel region it's **always 1** |
+| omp_set_num_threads() | Int | this is only a wish |
 | omp_get_max_threads() | max possible threads | |
 | omp_in_parallel() | am I in a parallel section right now? | |
 | omp_get_dynamic() | dynamic mode? (yes => two parallel regions might get different number of threads) | |
