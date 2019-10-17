@@ -4,6 +4,8 @@ Notes based on https://www.youtube.com/playlist?list=PLLX-Q6B8xqZ8n8bwjGdzBJ25X2
 * slides: https://www.openmp.org/wp-content/uploads/Intro_To_OpenMP_Mattson.pdf
 * exercises: http://www.openmp.org/wp-content/uploads/Mattson_OMP_exercises.zip
 
+**(!)** [Parallel Programming in MPI and OpenMP](http://pages.tacc.utexas.edu/~eijkhout/pcse/html/index.html)
+
 ## Introduction
 
 **Structured block**: 1+ statements, 1 entry point, 1 exit point. *How it's different from basic block?* 
@@ -142,6 +144,16 @@ for (int i = ID; i < n; i += NTHREADS) ...
         | --| -- | -- | -- | --- | -- | -- | -- | -- | -- |
         | 0 | 1 | 0 | +inf | -inf | ~0 | 0 | 0 | 1 | 0 |
                 
+        **Custom reduction**:
+        ```c++
+        // requires OpenMP version >= 4.0
+        struct cmp { int val, idx; };
+        #pragma omp declare reduction(custom_max: cmp: \
+            omp_out = (omp_in.val > omp_out.val ? omp_in : omp_out))
+        // ...
+        #pragma omp parallel for reduction(custom_max:max)
+        // ...        
+        ```
         
 * sections/section
     ```c++
