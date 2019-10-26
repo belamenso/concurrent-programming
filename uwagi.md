@@ -19,6 +19,7 @@ kolejności, gdzie iteracje są równej wielkości. W problemie plecakowym nie w
 Polak proponował w oliwkach.
 * Nie sprawdzałem niczego na studencie ponieważ wszystko liczy mi się tam po kilka minut, nie wiem w sumie dlaczego
 wszystko co tam odpalę ma tak niski priorytet.
+* Próbowałem robić jakieś triki w stylu `omp_set_num_threads(n/1000)` albo na podstawie wielkości `n` albo wchodzić w parallel section albo nie, ale wszystko było wolniejsze. Mam wrażenie, że ta metoda może dać jakieś wyniki, ale mi się nie udało.
 
 **Ciekawostka**: nasze rozwiązania zadania B z asdów są prawie identyczne, ale moje o 2 sekundy wolniejsze.
 Zastanawiałem się dlaczego i okazało się, że to jest ta różnica:
