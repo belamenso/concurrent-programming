@@ -1,3 +1,7 @@
+### TODO
+* `OMP_NESTED`
+* `#pragma omp taskloop`
+
 # OpenMP
 
 Notes based on https://www.youtube.com/playlist?list=PLLX-Q6B8xqZ8n8bwjGdzBJ25X2utwnoEG
